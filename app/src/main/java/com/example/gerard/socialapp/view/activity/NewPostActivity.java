@@ -1,8 +1,16 @@
 package com.example.gerard.socialapp.view.activity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.Application;
+import android.arch.lifecycle.ViewModelProviders;
+import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
@@ -10,12 +18,13 @@ import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 
-import com.example.gerard.socialapp.GlideApp;
+import com.bumptech.glide.Glide;
 import com.example.gerard.socialapp.MediaFiles;
 import com.example.gerard.socialapp.R;
 import com.example.gerard.socialapp.model.Post;
@@ -29,7 +38,15 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.UploadTask;
 
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -54,11 +71,14 @@ public class NewPostActivity extends AppCompatActivity {
     Button mImageButton;
     Button mVideoButton;
     Button mAudioButton;
+    MediaPlayer mp;
 
     Uri mFileUri;
 
     Uri mediaUri;
     String mediaType;
+    @SuppressLint("NewApi")
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-YYYY HH:mm");
 
     DatabaseReference mReference;
     FirebaseUser mUser;
@@ -66,10 +86,12 @@ public class NewPostActivity extends AppCompatActivity {
     boolean recording = false;
     private MediaRecorder mRecorder = null;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_new_post);
+       // mp = MediaPlayer.create(this, R.raw.tirar);
 
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO_PERMISSION);
 
@@ -160,28 +182,33 @@ public class NewPostActivity extends AppCompatActivity {
         if (requestCode == RC_IMAGE_TAKE && resultCode == RESULT_OK) {
             mediaUri = mFileUri;
             mediaType = "image";
-            GlideApp.with(this).load(mediaUri).into(imagePreview);
+            setPicture();
         } else if (requestCode == RC_VIDEO_TAKE && resultCode == RESULT_OK) {
             mediaUri = mFileUri;
             mediaType = "video";
-            GlideApp.with(this).load(mediaUri).into(imagePreview);
+            setPicture();
         }
 
         else if(data != null) {
              if (requestCode == RC_IMAGE_PICK) {
                 mediaUri = data.getData();
                 mediaType = "image";
-                GlideApp.with(this).load(mediaUri).into(imagePreview);
-            } else if (requestCode == RC_VIDEO_PICK) {
+                 setPicture();
+             } else if (requestCode == RC_VIDEO_PICK) {
                 mediaUri = data.getData();
                 mediaType = "video";
-                GlideApp.with(this).load(mediaUri).into(imagePreview);
-            } else if (requestCode == RC_AUDIO_PICK) {
+                 setPicture();
+             } else if (requestCode == RC_AUDIO_PICK) {
                 mediaUri = data.getData();
                 mediaType = "audio";
-                GlideApp.with(this).load(mediaUri).into(imagePreview);
-            }
+                 setPicture();
+             }
         }
+    }
+
+    private void setPicture() {
+
+        Glide.with(this).load(mediaUri).into(imagePreview);
     }
 
     void submitPost(){
@@ -205,7 +232,7 @@ public class NewPostActivity extends AppCompatActivity {
     private void writeNewPost(String postText, String mediaUrl) {
         String postKey = mReference.push().getKey();
 
-        Post post = new Post(mUser.getUid(), mUser.getDisplayName(), mUser.getPhotoUrl().toString(), postText, mediaUrl, mediaType);
+        Post post = new Post(mUser.getUid(), mUser.getDisplayName(), mUser.getPhotoUrl().toString(), postText, mediaUrl, mediaType, LocalDateTime.now().format(formatter));
         Map<String, Object> postValues = post.toMap();
 
         Map<String, Object> childUpdates = new HashMap<>();
@@ -311,5 +338,23 @@ public class NewPostActivity extends AppCompatActivity {
             mRecorder.release();
             mRecorder = null;
         }
+    }
+
+
+    @Override
+    public void onSaveInstanceState(Bundle outState){
+        super.onSaveInstanceState(outState);
+        if(mediaUri != null ) {
+            outState.putString("PREVIEW", mediaUri.toString());
+            outState.putString("TYPE",mediaType);
+        }
+    }
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState){
+        super.onRestoreInstanceState(savedInstanceState);
+        mediaUri = Uri.parse(savedInstanceState.getString("PREVIEW", null));
+        mediaType = savedInstanceState.getString("TYPE", null);
+        setPicture();
+
     }
 }

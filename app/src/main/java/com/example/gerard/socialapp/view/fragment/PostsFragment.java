@@ -14,6 +14,7 @@ import com.example.gerard.socialapp.R;
 import com.example.gerard.socialapp.model.Post;
 import com.example.gerard.socialapp.view.PostViewHolder;
 import com.example.gerard.socialapp.view.activity.MediaActivity;
+import com.example.gerard.socialapp.view.activity.ShowActivity;
 import com.firebase.ui.database.FirebaseRecyclerAdapter;
 import com.firebase.ui.database.FirebaseRecyclerOptions;
 import com.google.firebase.auth.FirebaseAuth;
@@ -54,6 +55,8 @@ public class PostsFragment extends Fragment {
                 final String postKey = getRef(position).getKey();
 
                 viewHolder.author.setText(post.author);
+                viewHolder.date.setText(post.date);
+
                 GlideApp.with(PostsFragment.this).load(post.authorPhotoUrl).circleCrop().into(viewHolder.photo);
 
                 if (post.likes.containsKey(mUser.getUid())) {
@@ -99,6 +102,23 @@ public class PostsFragment extends Fragment {
                             mReference.child("posts/data").child(postKey).child("likes").child(mUser.getUid()).setValue(true);
                             mReference.child("posts/user-likes").child(mUser.getUid()).child(postKey).setValue(true);
                         }
+                    }
+                });
+
+
+                viewHolder.itemView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Intent intent = new Intent(viewHolder.itemView.getContext(), ShowActivity.class);
+                        intent.putExtra("fotoautor", post.authorPhotoUrl);
+                        intent.putExtra("nombreautor", post.author);
+                        intent.putExtra("contenido", post.content);
+                        intent.putExtra("uri", post.mediaUrl);
+                        intent.putExtra("data", post.date);
+                        intent.putExtra("type", post.mediaType);
+
+
+                        viewHolder.itemView.getContext().startActivity(intent);
                     }
                 });
             }
